@@ -233,6 +233,8 @@ def check_device_exists(devices, device_id):
 
 def get_saml_response(client, username_or_email, password, app_id, onelogin_subdomain, ip=None, mfa_verify_info=None, cmd_otp=None):
     saml_endpoint_response = client.get_saml_assertion(username_or_email, password, app_id, onelogin_subdomain, ip)
+    print('--- Receiving saml endpoint response ---')
+    print(saml_endpoint_response)
 
     try_get_saml_response = 0
     verified_with_push = False
@@ -260,6 +262,8 @@ def get_saml_response(client, username_or_email, password, app_id, onelogin_subd
         if saml_endpoint_response and saml_endpoint_response.type == "pending":
             time.sleep(TIME_SLEEP_ON_RESPONSE_PENDING)
         saml_endpoint_response = client.get_saml_assertion(username_or_email, password, app_id, onelogin_subdomain, ip)
+        print('--- Receiving saml endpoint response ---')
+        print(saml_endpoint_response)
         try_get_saml_response += 1
         if try_get_saml_response == MAX_ITER_GET_SAML_RESPONSE:
             print("Not able to get a SAMLResponse with success status after %s iteration(s)." % MAX_ITER_GET_SAML_RESPONSE)
@@ -275,6 +279,9 @@ def get_saml_response(client, username_or_email, password, app_id, onelogin_subd
             mfa = saml_endpoint_response.mfa
             devices = mfa.devices
             state_token = mfa.state_token
+
+            print(state_token)
+            print('---- STATE TOKEN ----')
 
             if mfa_verify_info is None or 'device_id' not in mfa_verify_info:
                 print("\nMFA Required")
@@ -320,6 +327,7 @@ def get_saml_response(client, username_or_email, password, app_id, onelogin_subd
                     # Trigger PUSH and try verify
                     if 'otp_token' not in mfa_verify_info:
                         saml_endpoint_response = client.get_saml_assertion_verifying(app_id, device_id, state_token, None, do_not_notify=False)
+                        print(saml_endpoint_response)
                         print("PUSH with OTP token sent to device %s" % device_id)
                     while saml_endpoint_response and saml_endpoint_response.type == "pending" and try_get_saml_response_verified < MAX_ITER_GET_SAML_RESPONSE:
                         time.sleep(TIME_SLEEP_ON_RESPONSE_PENDING)
@@ -327,6 +335,8 @@ def get_saml_response(client, username_or_email, password, app_id, onelogin_subd
                         try_get_saml_response_verified += 1
 
                     if saml_endpoint_response and saml_endpoint_response.type == 'success':
+                        print(saml_endpoint_response)
+                        print("PUSH with OTP token sent to device %s" % device_id)
                         verified_with_push = True
                     else:
                         print("PUSH notification not confirmed, trying manual mode")
@@ -349,9 +359,12 @@ def get_saml_response(client, username_or_email, password, app_id, onelogin_subd
 
             if not verified_with_push:
                 saml_endpoint_response = client.get_saml_assertion_verifying(app_id, device_id, state_token, otp_token, do_not_notify=True)
+                print(saml_endpoint_response)
+                print("PUSH with OTP token sent to device %s" % device_id)
 
                 mfa_error = 0
                 while client.error or saml_endpoint_response is None:
+                    print(client.error)
                     if client.error_description == "State token is invalid or expired":
                         # State token expired so the OTP Token was not able to be processed
                         # regenerate new SAMLResponse and get new state_token
@@ -659,6 +672,11 @@ def main():
 
         if result is None:
             result = get_saml_response(client, username_or_email, password, app_id, onelogin_subdomain, ip, mfa_verify_info, cmd_otp)
+
+            print(result)
+            print("--- RESULT ---")
+            print(ip)
+            print("--- IP ---")
 
             username_or_email = result['username_or_email']
             password = result['password']
